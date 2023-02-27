@@ -1,0 +1,5 @@
+https://machinethink.net/blog/object-detection-with-yolo/
+
+https://machinethink.net/blog/yolo-coreml-versus-mps-graph/
+
+https://github.com/onnx/models/tree/main/vision/object_detection_segmentation/tiny-yolov2
