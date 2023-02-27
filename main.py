@@ -6,12 +6,13 @@ import math
 import copy
 
 model = "./tinyyolov2-8.onnx"
-path = "./1.JPG"
+path = "./test.JPG"
 
 # Preprocess the image
 img = cv2.imread(path)
 img = cv2.resize(img, dsize=(416, 416))
 img = img.swapaxes(0, 2)
+img = img.swapaxes(1, 2)
 img = np.expand_dims(img, axis=0)
 
 data = json.dumps({'data': img.tolist()})
@@ -65,6 +66,8 @@ def compute_prediction_list(model_result):
                 for c in range(num_classes):
                     classes[c] = model_result[0][0][channel + 5 + c][cx][cy]
 
+                classes = softmax(classes)
+
                 originalClass = copy.deepcopy(classes)
                 bestClassScore = getMax(classes)
                 detectedClass = originalClass.index(bestClassScore)
@@ -83,6 +86,12 @@ def getMax(classes):
 
 def sigmoid(value: float):
     return 1 / (1 + math.exp(-value))
+
+
+def softmax(values: list):
+    temp = [math.exp(v) for v in values]
+    total = sum(temp)
+    return [t / total for t in temp]
 
 
 lst = compute_prediction_list(result)
