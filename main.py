@@ -23,6 +23,8 @@ output_name = session.get_outputs()[0].name
 
 result = session.run([output_name], {input_name: data})
 
+result_list = result[0].reshape([21125]).tolist()
+
 num_classes = 20
 
 anchors = [0.57273, 0.677385, 1.87446, 2.06253, 3.33843,
@@ -56,8 +58,8 @@ def compute_prediction_list(model_result):
                 tc = model_result[0][0][channel + 4][cy][cx]
 
                 # apply sigmoid function to raw data
-                x = cx + sigmoid(tx) * 32
-                y = cy + sigmoid(ty) * 32
+                x = (cx + sigmoid(tx)) * 32
+                y = (cy + sigmoid(ty)) * 32
                 w = math.exp(tw) * anchors[2 * b] * 32
                 h = math.exp(th) * anchors[2 * b + 1] * 32
                 confidence = sigmoid(tc)
@@ -74,9 +76,52 @@ def compute_prediction_list(model_result):
                 confidenceInClass = bestClassScore * confidence
                 if confidenceInClass < 0.3:
                     continue
-                predictions.append(Prediction(x, y, w, h, confidenceInClass, detectedClass))
+                prediction = Prediction(x, y, w, h, confidenceInClass, detectedClass)
+                predictions.append(prediction)
 
     return predictions
+
+
+def compute_prediction(model_result):
+    predictions = []
+
+    for cy in range(13):
+        for cx in range(13):
+            for b in range(5):
+                channel = b * (num_classes + 5)
+                tx = model_result[compute_entry(channel, cy, cx)]
+                ty = model_result[compute_entry(channel + 1, cy, cx)]
+                tw = model_result[compute_entry(channel + 2, cy, cx)]
+                th = model_result[compute_entry(channel + 3, cy, cx)]
+                tc = model_result[compute_entry(channel + 4, cy, cx)]
+
+                # apply sigmoid function to raw data
+                x = (cx + sigmoid(tx)) * 32
+                y = (cy + sigmoid(ty)) * 32
+                w = math.exp(tw) * anchors[2 * b] * 32
+                h = math.exp(th) * anchors[2 * b + 1] * 32
+                confidence = sigmoid(tc)
+
+                classes = [0 for i in range(num_classes)]
+                for c in range(num_classes):
+                    classes[c] = model_result[compute_entry(channel + 5 + c, cx, cy)]
+
+                classes = softmax(classes)
+
+                originalClass = copy.deepcopy(classes)
+                bestClassScore = getMax(classes)
+                detectedClass = originalClass.index(bestClassScore)
+                confidenceInClass = bestClassScore * confidence
+                if confidenceInClass < 0.3:
+                    continue
+                prediction = Prediction(x, y, w, h, confidenceInClass, detectedClass)
+                predictions.append(prediction)
+
+    return predictions
+
+
+def compute_entry(channel, cy, cx):
+    return channel * 13 * 13 + cy * 13 + cx
 
 
 def getMax(classes):
@@ -95,7 +140,9 @@ def softmax(values: list):
 
 
 lst = compute_prediction_list(result)
+lst1 = compute_prediction(result_list)
 
 lst.sort(key=lambda a: a.getConfidence(), reverse=True)
+lst1.sort(key=lambda a: a.getConfidence(), reverse=True)
 
 print()
